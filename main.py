@@ -5,6 +5,7 @@ import seaborn as sns
 import os
 import wandb
 import warnings
+import pickle
 from tqdm import tqdm
 import tensorflow as tf
 from sklearn.utils import shuffle
@@ -74,19 +75,17 @@ def distribution_of_rice_data(main_folder: str) -> None:
 def data_augmentation(main_folder: str) -> pd.DataFrame:
     names = ['Arborio', 'Basmati', 'Ipsala', 'Jasmine', 'Karacadag']
     data_frames = []
-    print(main_folder)
     for index, name in enumerate(names):
         # na potrzeby testów tylko 5000 z każdego typu, bo inaczego długo zajmuje
         data_frames.append(pd.DataFrame({'filepath': [os.path.join(main_folder, name,
                                                       os.listdir(os.path.join(main_folder, name))[i])
-                                         for i in tqdm(range(5000), position=0, leave=True)], 'label': index + 1}))
+                                         for i in tqdm(range(1000), position=0, leave=True)], 'label': index + 1}))
     df = pd.concat(data_frames, axis=0)
     df['label'] = df['label'].astype(str)
-    print(df.head())
     return df
 
 
-def generate_image_data(df: pd.DataFrame) -> None:
+def generate_image_data(df: pd.DataFrame) -> tuple:
     datagen = ImageDataGenerator(rescale=1./255, shear_range=0.2, zoom_range=0.2, validation_split=0.2)
     train_generator = datagen.flow_from_dataframe(dataframe=df,
                                                   x_col='filepath',
@@ -105,6 +104,33 @@ def generate_image_data(df: pd.DataFrame) -> None:
                                                  shuffle=False,
                                                  class_mode='categorical',
                                                  target_size=(224, 224))
+    return train_generator, test_generator
+
+
+def visualize_augmented_image(to_visualize) -> None:
+    for batch in to_visualize:
+        images = batch[0]
+        labels = batch[1]
+        for i in range(5):
+            plt.figure(figsize=(20, 10))
+            plt.imshow(images[i])
+            print(images[i].shape)
+            plt.show()
+            print(labels[i])
+        break
+
+
+def create_model(traing_generator, test_generator, file_name):
+    vgg = VGG16(input_shape=[224, 224, 3], weights='imagenet', include_top=False)
+    for layer in vgg.layers:
+        layer.trainable = False
+    x = Flatten()(vgg.output)
+    prediction = Dense(units=5, activation='softmax')(x)
+    model = Model(inputs=vgg.input, outputs=prediction)
+    model.compile(loss='BinaryCrossentropy' , optimizer='adam', metrics=['accuracy'])
+    # aktualnie 1 poch, zeby sprawdzic zapisywanie, potem zwiekszyc ilosc do 5
+    model.fit_generator(traing_generator, epochs=1, validation_data=test_generator)
+    model.save(file_name)
 
 
 if __name__ == '__main__':
@@ -116,6 +142,10 @@ if __name__ == '__main__':
     df = data_augmentation(main_folder)
     df = shuffle(df)
     df.reset_index(drop=True, inplace=True)
+    file_name = 'saved_model'
+    train, test = generate_image_data(df)
+    create_model(train, test, file_name)
+    # article base: https://www.kaggle.com/code/padmanabhanporaiyar/rice-type-classification-99-accuracy-w-b
     # https://machinelearningmastery.com/save-load-machine-learning-models-python-scikit-learn/ zapis modelu
     # (na później), dopytać które lepsze
     # jakie gui? (pomysł: wybieramy ścieżkę do pliku (windows eksplorator plików), lub zestawu i wyświetlamy zdjęcia z
