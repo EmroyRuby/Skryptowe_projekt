@@ -2,10 +2,16 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from tqdm import tqdm
 import os
 import wandb
 import warnings
+from tqdm import tqdm
+import tensorflow as tf
+from sklearn.utils import shuffle
+from keras.preprocessing.image import ImageDataGenerator
+from keras.applications import VGG16
+from keras.layers import Dense, Flatten
+from keras.models import Model
 
 
 def get_main_path() -> str:
@@ -52,7 +58,7 @@ def log_rice_types(name, table_name, main_folder: str):
 """
 
 
-def distribution_of_rice_data(main_folder):
+def distribution_of_rice_data(main_folder: str) -> None:
     types_of_rice = list(os.listdir(main_folder))
     types_of_rice.remove('Rice_Citation_Request.txt')
     num_images = [len(os.listdir(os.path.join(main_folder, rice))) for rice in types_of_rice]
@@ -65,7 +71,53 @@ def distribution_of_rice_data(main_folder):
     plt.show()
 
 
+def data_augmentation(main_folder: str) -> pd.DataFrame:
+    names = ['Arborio', 'Basmati', 'Ipsala', 'Jasmine', 'Karacadag']
+    data_frames = []
+    print(main_folder)
+    for index, name in enumerate(names):
+        # na potrzeby testów tylko 5000 z każdego typu, bo inaczego długo zajmuje
+        data_frames.append(pd.DataFrame({'filepath': [os.path.join(main_folder, name,
+                                                      os.listdir(os.path.join(main_folder, name))[i])
+                                         for i in tqdm(range(5000), position=0, leave=True)], 'label': index + 1}))
+    df = pd.concat(data_frames, axis=0)
+    df['label'] = df['label'].astype(str)
+    print(df.head())
+    return df
+
+
+def generate_image_data(df: pd.DataFrame) -> None:
+    datagen = ImageDataGenerator(rescale=1./255, shear_range=0.2, zoom_range=0.2, validation_split=0.2)
+    train_generator = datagen.flow_from_dataframe(dataframe=df,
+                                                  x_col='filepath',
+                                                  y_col='label',
+                                                  subset='training',
+                                                  batch_size=32,
+                                                  shuffle=True,
+                                                  class_mode='categorical',
+                                                  target_size=(224, 224))
+
+    test_generator = datagen.flow_from_dataframe(dataframe=df,
+                                                 x_col="filepath",
+                                                 y_col='label',
+                                                 batch_size=32,
+                                                 subset='validation',
+                                                 shuffle=False,
+                                                 class_mode='categorical',
+                                                 target_size=(224, 224))
+
+
 if __name__ == '__main__':
     main_folder = get_main_path()
+    # display some samples
     # display_multiple_samples(5, 5, main_folder)
-    distribution_of_rice_data(main_folder)
+    # display distribution of data
+    # distribution_of_rice_data(main_folder)
+    df = data_augmentation(main_folder)
+    df = shuffle(df)
+    df.reset_index(drop=True, inplace=True)
+    # https://machinelearningmastery.com/save-load-machine-learning-models-python-scikit-learn/ zapis modelu
+    # (na później), dopytać które lepsze
+    # jakie gui? (pomysł: wybieramy ścieżkę do pliku (windows eksplorator plików), lub zestawu i wyświetlamy zdjęcia z
+    # odpowiednimi opisami
+    # czy coś jeszcze brakuje koncepcyjnie?
