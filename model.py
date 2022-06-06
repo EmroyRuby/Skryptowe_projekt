@@ -146,8 +146,6 @@ def main():
     # jakie gui? (pomysł: wybieramy ścieżkę do pliku (windows eksplorator plików), lub zestawu i wyświetlamy zdjęcia z
     # odpowiednimi opisami
     # czy coś jeszcze brakuje koncepcyjnie?
-    #dodałek linie
-    print('ala')
 
 
 if __name__ == '__main__':
