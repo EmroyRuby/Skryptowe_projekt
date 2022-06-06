@@ -1,9 +1,9 @@
 from PyQt6.QtWidgets import QApplication, QWidget, QLabel, QFileDialog, QPushButton, QGridLayout, QGroupBox, \
     QHBoxLayout, QVBoxLayout, QRadioButton
 from PyQt6.QtGui import QPixmap
+from model import MyModel
 import os
 import sys
-import model
 
 
 class Gui(QApplication):
@@ -69,9 +69,17 @@ class Window(QWidget):
         self.text_label_2.setText(os.path.join(os.getcwd(), 'saved_model'))
         hbox_2.addWidget(self.text_label_2)
 
+        button3 = QPushButton('Run', self)
+        button3.resize(button3.sizeHint())
+        button3.clicked.connect(self.run_button)
+
+        self.text_label_3 = QLabel(self)
+
         grid.addWidget(group1, 0, 0)
         grid.addWidget(group2, 1, 0)
         grid.addWidget(self.pic_label, 0, 1, 2, 1)
+        grid.addWidget(button3, 2, 0)
+        grid.addWidget(self.text_label_3, 2, 1)
 
         self.setLayout(grid)
 
@@ -107,6 +115,20 @@ class Window(QWidget):
             self.rad_button_1.setChecked(False)
         else:
             self.rad_button_2.setChecked(True)
+
+    def run_button(self):
+        model = MyModel()
+        path_to_img = self.text_label.text()
+        pred = model.use_model(path_to_img)
+        pred = pred[0]
+        types = ['Arborio', 'Basmati', 'Ipsala', 'Jasmine', 'Karacadag']
+        max_value = pred[0]
+        max_index = 0
+        for index, val in enumerate(pred):
+            if val > max_value:
+                max_value = val
+                max_index = index
+        self.text_label_3.setText(f'Type: {types[max_index]}')
 
     def start(self):
         self.show()

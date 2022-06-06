@@ -5,20 +5,24 @@ import os
 from tqdm import tqdm
 from sklearn.utils import shuffle
 from keras.preprocessing.image import ImageDataGenerator
+from keras.utils import load_img, img_to_array
 from keras.applications import VGG16
+from keras.applications.vgg16 import preprocess_input
 from keras.layers import Dense, Flatten
 from keras.models import Model, load_model
 
 
 class MyModel:
-    def __init__(self, use_default=True, file_name='saved_model', *, activation='softmax', loss='BinaryCrossentropy',
-                 optimizer='adam', metrics=['accuracy'], epochs=5):
+    def __init__(self, use_default=True, use_existing=False, path_of_model='', *, file_name='saved_model',
+                 activation='softmax', loss='BinaryCrossentropy', optimizer='adam', metrics=['accuracy'], epochs=5):
         self.main_folder = os.getcwd() + '\\Rice_Image_Dataset'
         if use_default:
             if os.path.exists(os.path.join(os.getcwd(), 'saved_model')):
                 self.model = load_model(os.path.join(os.getcwd(), 'saved_model'))
             else:
                 self.create_default_model()
+        elif use_existing:
+            self.model = load_model()
         else:
             self.train_and_save_special_model(file_name, activation, loss, optimizer, metrics, epochs)
 
@@ -59,7 +63,7 @@ class MyModel:
             # na potrzeby testów tylko 5000 z każdego typu, bo inaczego długo zajmuje
             data_frames.append(pd.DataFrame({'filepath': [os.path.join(self.main_folder, name,
                                                           os.listdir(os.path.join(self.main_folder, name))[i])
-                                             for i in tqdm(range(1000), position=0, leave=True)], 'label': index + 1}))
+                                             for i in tqdm(range(12000), position=0, leave=True)], 'label': index + 1}))
         self.df = pd.concat(data_frames, axis=0)
         self.df['label'] = self.df['label'].astype(str)
 
@@ -103,10 +107,10 @@ class MyModel:
             layer.trainable = False
         x = Flatten()(vgg.output)
         prediction = Dense(units=5, activation='softmax')(x)
-        model = Model(inputs=vgg.input, outputs=prediction)
-        model.compile(loss='BinaryCrossentropy', optimizer='adam', metrics=['accuracy'])
-        model.fit_generator(traing_generator, epochs=5, validation_data=test_generator)
-        model.save(file_name)
+        self.model = Model(inputs=vgg.input, outputs=prediction)
+        self.model.compile(loss='BinaryCrossentropy', optimizer='adam', metrics=['accuracy'])
+        self.model.fit_generator(traing_generator, epochs=5, validation_data=test_generator)
+        self.model.save(file_name)
 
     def create_default_model(self):
         self.data_augmentation()
@@ -121,14 +125,23 @@ class MyModel:
             layer.trainable = False
         x = Flatten()(vgg.output)
         prediction = Dense(units=5, activation=activation)(x)
-        model = Model(inputs=vgg.input, outputs=prediction)
-        model.compile(loss=loss, optimizer=optimizer, metrics=metrics)
-        model.fit_generator(traing_generator, epochs=epochs, validation_data=test_generator)
-        model.save(file_name)
+        self.model = Model(inputs=vgg.input, outputs=prediction)
+        self.model.compile(loss=loss, optimizer=optimizer, metrics=metrics)
+        self.model.fit_generator(traing_generator, epochs=epochs, validation_data=test_generator)
+        self.model.save(file_name)
+
+    def use_model(self, path):
+        image = load_img(path, target_size=(224, 224))
+        image = img_to_array(image)
+        image = image.reshape((1, image.shape[0], image.shape[1], image.shape[2]))
+        image = preprocess_input(image)
+        return self.model.predict(image)
 
 
 def main():
     model = MyModel()
+    result = model.use_model(os.path.join(os.getcwd(), 'Rice_Image_Dataset', 'Basmati', 'basmati (2).jpg'))
+    print(result)
 
 
 if __name__ == '__main__':
