@@ -34,9 +34,6 @@ class Window(QWidget):
         vbox = QVBoxLayout(self)
         group2.setLayout(vbox)
 
-        self.text_label = QLabel(self)
-        hbox.addWidget(self.text_label)
-
         self.pic_label = QLabel(self)
 
         button1 = QPushButton('Browser...', self)
@@ -44,12 +41,31 @@ class Window(QWidget):
         button1.clicked.connect(self.load_pic)
         hbox.addWidget(button1)
 
-        rad_button_1 = QRadioButton('Default')
-        rad_button_1.setChecked(True)
-        vbox.addWidget(rad_button_1)
+        self.text_label = QLabel(self)
+        hbox.addWidget(self.text_label)
 
-        rad_button_2 = QRadioButton('Choose my own:')
-        vbox.addWidget(rad_button_2)
+        self.rad_button_1 = QRadioButton('Default')
+        self.rad_button_1.setChecked(True)
+        self.rad_button_1.clicked.connect(self.set_default_model)
+        vbox.addWidget(self.rad_button_1)
+
+        self.rad_button_2 = QGroupBox('Choose my own:')
+        self.rad_button_2.setCheckable(True)
+        self.rad_button_2.setChecked(False)
+        self.rad_button_2.setFlat(True)
+        self.rad_button_2.clicked.connect(self.rad_button_2_check)
+        hbox_2 = QHBoxLayout(self)
+        self.rad_button_2.setLayout(hbox_2)
+        vbox.addWidget(self.rad_button_2)
+
+        button2 = QPushButton('Browser...', self)
+        button2.resize(button2.sizeHint())
+        button2.clicked.connect(self.get_model_loc)
+        hbox_2.addWidget(button2)
+
+        self.text_label_2 = QLabel(self)
+        self.text_label_2.setText(os.path.join(os.getcwd(), 'saved_model'))
+        hbox_2.addWidget(self.text_label_2)
 
         grid.addWidget(group1, 0, 0)
         grid.addWidget(group2, 1, 0)
@@ -57,7 +73,7 @@ class Window(QWidget):
 
         self.setLayout(grid)
 
-    def get_loc(self):
+    def get_pic_loc(self):
         path = QFileDialog.getOpenFileName(self, 'Open file', '', 'jpg Files (*.jpg)')
         if path != ('', ''):
             return path[0]
@@ -68,8 +84,27 @@ class Window(QWidget):
         self.text_label.setText(pic)
 
     def load_pic(self):
-        path = self.get_loc()
+        path = self.get_pic_loc()
         self.show_pic(path)
+
+    def get_model_loc(self):
+        path = QFileDialog.getExistingDirectory(self, 'Choose catalog', '')
+        if path != ('', ''):
+            self.text_label_2.setText(path)
+            # return path
+
+    def set_default_model(self):
+        if self.rad_button_2.isChecked():
+            self.rad_button_2.setChecked(False)
+            self.text_label_2.setText(os.path.join(os.getcwd(), 'saved_model'))
+        else:
+            self.rad_button_1.setChecked(True)
+
+    def rad_button_2_check(self):
+        if self.rad_button_1.isChecked():
+            self.rad_button_1.setChecked(False)
+        else:
+            self.rad_button_2.setChecked(True)
 
     def start(self):
         self.show()
