@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import QApplication, QWidget, QLabel, QFileDialog, QPushBut
 from PyQt6.QtGui import QPixmap
 import os
 import sys
+import model
 
 
 class Gui(QApplication):
