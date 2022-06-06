@@ -1,7 +1,8 @@
 from PyQt6.QtWidgets import QApplication, QWidget, QLabel, QFileDialog, QPushButton, QGridLayout, QGroupBox, \
     QHBoxLayout, QVBoxLayout, QRadioButton
 from PyQt6.QtGui import QPixmap
-import os, sys
+import os
+import sys
 
 
 class Gui(QApplication):
@@ -110,6 +111,10 @@ class Window(QWidget):
         self.show()
 
 
-if __name__ == '__main__':
+def main():
     gui = Gui()
     gui.run()
+
+
+if __name__ == '__main__':
+    main()
