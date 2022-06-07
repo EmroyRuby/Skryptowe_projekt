@@ -8,8 +8,8 @@ from keras.preprocessing.image import ImageDataGenerator
 from keras.utils import load_img, img_to_array
 from keras.applications import VGG16
 from keras.applications.vgg16 import preprocess_input
-from keras.layers import Dense, Flatten
-from keras.models import Model, load_model
+from keras.layers import Dense, Flatten, Conv2D, MaxPool2D
+from keras.models import Model, load_model, Sequential
 
 
 class MyModel:
@@ -22,7 +22,10 @@ class MyModel:
             else:
                 self.create_default_model()
         elif use_existing:
-            self.model = load_model()
+            if os.path.exists(path_of_model):
+                self.model = load_model(path_of_model)
+            else:
+                print('No model')
         else:
             self.train_and_save_special_model(file_name, activation, loss, optimizer, metrics, epochs)
 
@@ -63,13 +66,13 @@ class MyModel:
             # na potrzeby testów tylko 5000 z każdego typu, bo inaczego długo zajmuje
             data_frames.append(pd.DataFrame({'filepath': [os.path.join(self.main_folder, name,
                                                           os.listdir(os.path.join(self.main_folder, name))[i])
-                                             for i in tqdm(range(12000), position=0, leave=True)], 'label': index + 1}))
+                                             for i in tqdm(range(14000), position=0, leave=True)], 'label': index + 1}))
         self.df = pd.concat(data_frames, axis=0)
         self.df['label'] = self.df['label'].astype(str)
 
     def generate_image_data(self) -> tuple:
         self.df = shuffle(self.df)
-        datagen = ImageDataGenerator(rescale=1./255, shear_range=0.2, zoom_range=0.2, validation_split=0.2)
+        datagen = ImageDataGenerator(rescale=1./255, validation_split=0.2)
         train_generator = datagen.flow_from_dataframe(dataframe=self.df,
                                                       x_col='filepath',
                                                       y_col='label',
@@ -77,7 +80,7 @@ class MyModel:
                                                       batch_size=32,
                                                       shuffle=True,
                                                       class_mode='categorical',
-                                                      target_size=(224, 224))
+                                                      target_size=(32, 32))
 
         test_generator = datagen.flow_from_dataframe(dataframe=self.df,
                                                      x_col="filepath",
@@ -86,7 +89,7 @@ class MyModel:
                                                      subset='validation',
                                                      shuffle=False,
                                                      class_mode='categorical',
-                                                     target_size=(224, 224))
+                                                     target_size=(32, 32))
         return train_generator, test_generator
 
     def visualize_augmented_image(self, to_visualize) -> None:
@@ -102,14 +105,17 @@ class MyModel:
             break
 
     def create_model(self, traing_generator, test_generator, file_name='saved_model'):
-        vgg = VGG16(input_shape=[224, 224, 3], weights='imagenet', include_top=False)
-        for layer in vgg.layers:
-            layer.trainable = False
-        x = Flatten()(vgg.output)
-        prediction = Dense(units=5, activation='softmax')(x)
-        self.model = Model(inputs=vgg.input, outputs=prediction)
+        self.model = Sequential()
+        self.model.add(Conv2D(16, 3, activation='relu'))
+        self.model.add(Conv2D(16, 3, activation='relu'))
+        self.model.add(MaxPool2D())
+        self.model.add(Conv2D(32, 3, activation='relu'))
+        self.model.add(Conv2D(32, 3, activation='relu'))
+        self.model.add(MaxPool2D())
+        self.model.add(Flatten())
+        self.model.add(Dense(5, 'softmax'))
         self.model.compile(loss='BinaryCrossentropy', optimizer='adam', metrics=['accuracy'])
-        self.model.fit_generator(traing_generator, epochs=5, validation_data=test_generator)
+        self.model.fit_generator(traing_generator, epochs=20, validation_data=test_generator)
         self.model.save(file_name)
 
     def create_default_model(self):
@@ -120,23 +126,34 @@ class MyModel:
     def train_and_save_special_model(self, file_name, activation, loss, optimizer, metrics, epochs):
         self.data_augmentation()
         traing_generator, test_generator = self.generate_image_data()
-        vgg = VGG16(input_shape=[224, 224, 3], weights='imagenet', include_top=False)
-        for layer in vgg.layers:
-            layer.trainable = False
-        x = Flatten()(vgg.output)
-        prediction = Dense(units=5, activation=activation)(x)
-        self.model = Model(inputs=vgg.input, outputs=prediction)
-        self.model.compile(loss=loss, optimizer=optimizer, metrics=metrics)
+        self.model = Sequential()
+        self.model.add(Conv2D(16, 3, activation=activation))
+        self.model.add(Conv2D(16, 3, activation=activation))
+        self.model.add(MaxPool2D())
+        self.model.add(Conv2D(32, 3, activation=activation))
+        self.model.add(Conv2D(32, 3, activation=activation))
+        self.model.add(MaxPool2D())
+        self.model.add(Flatten())
+        self.model.add(Dense(5, 'softmax'))
+        self.model.compile(loss=loss, optimizer=optimizer, metrics=[metrics])
         self.model.fit_generator(traing_generator, epochs=epochs, validation_data=test_generator)
         self.model.save(file_name)
 
     def use_model(self, path):
-        image = load_img(path, target_size=(224, 224))
+        image = load_img(path, target_size=(32, 32))
         image = img_to_array(image)
         image = image.reshape((1, image.shape[0], image.shape[1], image.shape[2]))
         image = preprocess_input(image)
         return self.model.predict(image)
 
+    def train(self):
+        self.data_augmentation()
+        traing_generator, test_generator = self.generate_image_data()
+        self.model.fit_generator(traing_generator,
+                                 steps_per_epoch=traing_generator.samples//traing_generator.batch_size,
+                                 epochs=5, validation_data=test_generator,
+                                 validation_steps=test_generator.samples//test_generator.batch_size, verbose=1)
+        self.model.save('saved_model')
 
 def main():
     model = MyModel()
