@@ -1,10 +1,11 @@
 from PyQt6.QtWidgets import QApplication, QWidget, QLabel, QFileDialog, QPushButton, QGridLayout, QGroupBox, \
     QHBoxLayout, QVBoxLayout, QRadioButton, QMenu, QLineEdit
-from PyQt6.QtGui import QPixmap, QFont
+from PyQt6.QtGui import QPixmap, QFont, QMovie
 from model import MyModel
 import exception
 import os
 import sys
+import time
 
 
 class Gui(QApplication):
@@ -17,13 +18,29 @@ class Gui(QApplication):
         sys.exit(self.exec())
 
 
+class LoadingWindow(QWidget):
+    def __init__(self):
+        super().__init__()
+
+        grid = QGridLayout()
+
+        label = QLabel(self)
+        label.setText('Your model is now being created,\nthis process can take a while to complete')
+
+        grid.addWidget(label, 0, 0)
+        self.setLayout(grid)
+
+    def start(self):
+        self.show()
+
+    def stop(self):
+        self.close()
+
+
 class ErrorWindow(QWidget):
     def __init__(self):
         super().__init__()
 
-        self.init_ui()
-
-    def init_ui(self):
         self.setWindowTitle('Error')
         self.setGeometry(400, 400, 200, 50)
 
@@ -48,10 +65,8 @@ class SecondWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.error_msg = ErrorWindow()
+        self.loading_window = LoadingWindow()
 
-        self.init_ui()
-
-    def init_ui(self):
         self.setWindowTitle('Model generator')
         self.setGeometry(300, 300, 400, 200)
 
@@ -163,7 +178,9 @@ class SecondWindow(QWidget):
             if not self.text_input_2.text().isdigit():
                 raise exception.EpochsNotANumber
             epochs = int(self.text_input_2.text())
+            self.loading_window.start()
             self.create_model_with_param(file_name, activation, loss, optimizer, metrics, epochs)
+            self.loading_window.stop()
         except exception.MissingFileName:
             self.error_msg.pass_exception('File name is missing')
             self.error_msg.show()
@@ -194,9 +211,6 @@ class Window(QWidget):
         super().__init__()
         self.another_window = SecondWindow()
 
-        self.init_ui()
-
-    def init_ui(self):
         self.setWindowTitle('Rice image recognition')
         self.setGeometry(300, 300, 400, 200)
 
@@ -311,7 +325,6 @@ class Window(QWidget):
 
     def create_my_model(self):
         self.another_window.show()
-
 
     def start(self):
         self.show()
