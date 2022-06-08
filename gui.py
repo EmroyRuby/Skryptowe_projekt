@@ -18,7 +18,6 @@ class Gui(QApplication):
         sys.exit(self.exec())
 
 
-
 class LoadingWindow(QWidget):
     def __init__(self):
         super().__init__()

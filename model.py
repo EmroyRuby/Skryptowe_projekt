@@ -80,7 +80,7 @@ class MyModel:
                                                       batch_size=32,
                                                       shuffle=True,
                                                       class_mode='categorical',
-                                                      target_size=(32, 32))
+                                                      target_size=(64, 64))
 
         test_generator = datagen.flow_from_dataframe(dataframe=self.df,
                                                      x_col="filepath",
@@ -89,7 +89,7 @@ class MyModel:
                                                      subset='validation',
                                                      shuffle=False,
                                                      class_mode='categorical',
-                                                     target_size=(32, 32))
+                                                     target_size=(64, 64))
         return train_generator, test_generator
 
     def visualize_augmented_image(self, to_visualize) -> None:
@@ -115,7 +115,7 @@ class MyModel:
         self.model.add(Flatten())
         self.model.add(Dense(5, 'softmax'))
         self.model.compile(loss='BinaryCrossentropy', optimizer='adam', metrics=['accuracy'])
-        self.model.fit_generator(traing_generator, epochs=20, validation_data=test_generator)
+        self.model.fit_generator(traing_generator, epochs=10, validation_data=test_generator)
         self.model.save(file_name)
 
     def create_default_model(self):
@@ -140,7 +140,7 @@ class MyModel:
         self.model.save(file_name)
 
     def use_model(self, path):
-        image = load_img(path, target_size=(32, 32))
+        image = load_img(path, target_size=(64, 64))
         image = img_to_array(image)
         image = image.reshape((1, image.shape[0], image.shape[1], image.shape[2]))
         image = preprocess_input(image)
